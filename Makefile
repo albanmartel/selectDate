@@ -33,17 +33,71 @@ selectDate.desktop\
 
 ICONS=\
 selectDate.svg\
-install:
+
+# --- DEPENDANCES A VERIFIER ---
+DEPS = xclip wl-copy zenity
+
+# Mapping Paquet/Description pour l'affichage des messages
+# Format : Exécutable:Paquet_ou_nom_courant:Description
+# Nous utilisons ici uniquement des caracteres ASCII
+DEP_INFO = \
+xclip:xclip:Presse-papiers X11 \
+wl-copy:wl-clipboard:Presse-papiers Wayland \
+zenity:zenity:Boites de dialogue GUI
+
+# --- CIBLE DE VERIFICATION AMELIOREE SANS ACCENTS ---
+.PHONY: check_deps
+check_deps:
+	@echo "--- Demarrage de la verification des dependances ---"
+	@EXIT_CODE=0; \
+	for dep in $(DEPS); do \
+		case "$$dep" in \
+			"xclip") \
+				EXE="xclip"; PACKAGE="xclip"; DESC="Presse-papiers X11"; \
+				;; \
+			"wl-copy") \
+				EXE="wl-copy"; PACKAGE="wl-clipboard"; DESC="Presse-papiers Wayland"; \
+				;; \
+			"zenity") \
+				EXE="zenity"; PACKAGE="zenity"; DESC="Boites de dialogue GUI"; \
+				;; \
+			*) \
+				EXE="$$dep"; PACKAGE="INCONNU"; DESC="Outil Inconnu"; \
+				;; \
+		esac; \
+		\
+		if ! command -v $$EXE &> /dev/null; then \
+			echo "[ECHEC] L'outil '$$EXE' (Paquet: $$PACKAGE) est introuvable."; \
+			echo "        - Role : $$DESC"; \
+			echo "        - Action: Veuillez installer le paquet '$$PACKAGE' via votre gestionnaire de paquets (apt, dnf, pacman, etc.)."; \
+			EXIT_CODE=1; \
+		else \
+			echo "[OK] Outil '$$EXE' ($$DESC) trouve."; \
+		fi; \
+	done; \
+	\
+	if [ $$EXIT_CODE -ne 0 ]; then \
+		echo "--- VERIFICATION TERMINEE AVEC ECHEC. L'installation est annulee. ---"; \
+		exit 1; \
+	else \
+		echo "--- VERIFICATION TERMINEE AVEC SUCCES. Toutes les dependances sont pretes. ---"; \
+	fi
+
+install: check_deps
+	@echo "Installation des fichiers..."
 	cp $(SCRIPTS) $(PREFIX)/bin/
 	cp $(DESKTOPS) $(PREFIX)/share/applications
 	cp $(ICONS) $(PREFIX)share/icons
 	chmod +x $(PREFIX)/bin/$(SCRIPTS)
+	@echo "Installation terminee avec succes."
 
 
 uninstall:
+	@echo "Desinstallation des fichiers..."
 	@for f in $(SCRIPTS); do rm -f "$(PREFIX)/bin/$${f}"; done
 	@for f in $(DESKTOPS); do rm -f "$(PREFIX)/share/applications/$${f}"; done
 	@for f in $(ICONS); do rm -f "$(PREFIX)/share/icons/$${f}"; done
+	@echo "Desinstallation terminee."
 
 lint:
 	@shellcheck -o all $(SCRIPTS)
