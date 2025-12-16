@@ -33,17 +33,17 @@ selectDate.desktop\
 
 ICONS=\
 selectDate.svg\
-
 install:
 	cp $(SCRIPTS) $(PREFIX)/bin/
-  cp $(DESKTOPS} $(PREFIX)share/applications
-  cp $(ICONS} $(PREFIX)share/icons
+	cp $(DESKTOPS) $(PREFIX)/share/applications
+	cp $(ICONS) $(PREFIX)share/icons
+	chmod +x $(PREFIX)/bin/$(SCRIPTS)
 
 
 uninstall:
 	@for f in $(SCRIPTS); do rm -f "$(PREFIX)/bin/$${f}"; done
-  @for f in $(DESKTOPS); do rm -f "$(PREFIX)/share/applications/$${f}"; done
-  @for f in $(ICONS); do rm -f "$(PREFIX)/share/icons/$${f}"; done
+	@for f in $(DESKTOPS); do rm -f "$(PREFIX)/share/applications/$${f}"; done
+	@for f in $(ICONS); do rm -f "$(PREFIX)/share/icons/$${f}"; done
 
 lint:
 	@shellcheck -o all $(SCRIPTS)
