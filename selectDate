@@ -31,16 +31,16 @@ get_date() {
             ZENITY_RESULT_CODE=$?
         fi
     else
-        echo "INFO: Environnement TTY detecte. Zenity bypassé." >&2
+        echo "TTY detecte. bypasse Zenity." >&2
     fi
     
     if [[ -z "${SELECTED_DATE}" || "$ZENITY_RESULT_CODE" -ne 0 ]]; then 
         SELECTED_DATE=$(date +"%Y-%m-%d")
         
         if [[ "$ENV" != "TTY" ]]; then
-            echo "INFO: Pas de selection manuelle. Date du jour utilisee." >&2
+            echo "Pas selection, la date du jour utilisee." >&2
         else
-            echo "INFO: Date du jour utilisee pour TTY." >&2
+            echo "Date retenue: ${SELECTED_DATE}" >&2
         fi
         
     fi
@@ -53,13 +53,17 @@ get_date() {
 selectDate() {
     local ENV
     ENV=$(get_environnement_graphic)
+    SCRIPT_PATH=$(realpath "$0" 2>/dev/null || echo "$0")
     local FINAL_DATE
     FINAL_DATE=$(get_date)
     local EXIT_CODE=0
 
     case "$ENV" in
         "TTY")
-            echo "ATTENTION: Environnement TTY detecte. La date du jour ($FINAL_DATE) est utilisee sans appel a Zenity ni copie." >&2
+            echo "\$DATE sera utilisable si le script est lance avec la commande:">&2
+            echo "">&2
+            echo "   source $SCRIPT_PATH">&2
+            echo "">&2            
             ;;
 
         "Wayland")
@@ -93,4 +97,9 @@ selectDate() {
     echo "$FINAL_DATE"
 }
 
-selectDate
+# capture le dernier 'echo' de la fonction dans la variable DATE_POUR_LE_SCRIPT
+DATE=$(selectDate)
+
+echo "--- EXEMPLES D'UTILISATION ---"
+echo "Par exemple : mkdir -p \$DATE (mkdir -p $DATE)"
+echo "créer un fichier : touch \$DATE.txt (touch $DATE)"
