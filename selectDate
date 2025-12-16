@@ -1,19 +1,96 @@
 #!/bin/bash
 ### copy dates lxde clock lxpanel panel ###
-DATE=$(zenity --calendar --text "Sélectionner une date" --date-format "%Y-%m-%d")
-if [[ -z "${DATE}" ]]; then 
-	DATE=$(date +"%Y-%m-%d")
-	zenity --info --text "No selection, \n curent date : $DATE\n is copied to the clipboard"
-else
-	zenity --info "Selected date" --text="Selected date : $DATE\n is copied to the clipboard"
-fi
 
-echo $DATE
- 
-if [[ "$XDG_SESSION_TYPE" == "wayland" ]]; then
-	wl-copy $DATE
-else
-	echo "${DATE}" | xclip -i
-fi
+get_environnement_graphic() {
+    if [[ "$XDG_SESSION_TYPE" == "wayland" ]]; then
+        echo "Wayland"
+        return
+    fi
+    
+    if [[ -n "$DISPLAY" ]]; then
+        echo "X11"
+        return
+    fi
 
-exit
+    echo "TTY"
+}
+
+get_date() {
+    local ENV
+    ENV=$(get_environnement_graphic)
+    
+    local SELECTED_DATE=""
+    local ZENITY_RESULT_CODE=0
+    
+    if [[ "$ENV" == "X11" || "$ENV" == "Wayland" ]]; then
+        if ! command -v zenity &> /dev/null; then
+            echo "ERREUR: Zenity est introuvable. Impossible d'ouvrir le calendrier." >&2
+            ZENITY_RESULT_CODE=1
+        else
+            SELECTED_DATE=$(zenity --calendar --text "Selectionner une date" --date-format "%Y-%m-%d" 2>/dev/null)
+            ZENITY_RESULT_CODE=$?
+        fi
+    else
+        echo "INFO: Environnement TTY detecte. Zenity bypassé." >&2
+    fi
+    
+    if [[ -z "${SELECTED_DATE}" || "$ZENITY_RESULT_CODE" -ne 0 ]]; then 
+        SELECTED_DATE=$(date +"%Y-%m-%d")
+        
+        if [[ "$ENV" != "TTY" ]]; then
+            echo "INFO: Pas de selection manuelle. Date du jour utilisee." >&2
+        else
+            echo "INFO: Date du jour utilisee pour TTY." >&2
+        fi
+        
+    fi
+    
+    echo "${SELECTED_DATE}"
+    return 0
+}
+
+
+selectDate() {
+    local ENV
+    ENV=$(get_environnement_graphic)
+    local FINAL_DATE
+    FINAL_DATE=$(get_date)
+    local EXIT_CODE=0
+
+    case "$ENV" in
+        "TTY")
+            echo "ATTENTION: Environnement TTY detecte. La date du jour ($FINAL_DATE) est utilisee sans appel a Zenity ni copie." >&2
+            ;;
+
+        "Wayland")
+            if command -v wl-copy &> /dev/null; then
+                wl-copy "$FINAL_DATE"
+            else
+                zenity --error --text="Wayland detecte, mais 'wl-copy' est introuvable. Veuillez installer 'wl-clipboard'."
+                EXIT_CODE=1
+            fi
+            ;;
+
+        "X11")
+            if command -v xclip &> /dev/null; then
+                echo "$FINAL_DATE" | xclip -selection clipboard -i
+            else
+                zenity --error --text="X11 detecte, mais 'xclip' est introuvable. Veuillez installer 'xclip'."
+                EXIT_CODE=1
+            fi
+            ;;
+        
+        *)
+            zenity --error --text="Environnement inconnu ($ENV). La date du jour ($FINAL_DATE) est utilisee."
+            echo "ATTENTION: Environnement inconnu ($ENV). La date du jour ($FINAL_DATE) est utilisee." >&2
+            ;;
+    esac
+
+    if [ "$EXIT_CODE" -ne 0 ]; then
+        exit 1
+    fi
+    
+    echo "$FINAL_DATE"
+}
+
+selectDate
